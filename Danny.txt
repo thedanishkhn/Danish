@@ -1,0 +1,216 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import Sequential 
+from keras.layers import Convolution2D ,MaxPooling2D, Flatten , Dense , Dropout, CuDNNGRU
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+from sklearn.preprocessing import StandardScaler
+from keras.layers import Input
+from keras.utils import to_categorical
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_curve, auc
+from sklearn.model_selection import cross_val_score , cross_validate
+import datetime
+import os
+from mlxtend.evaluate import confusion_matrix
+from keras.models import Model # basic class for specifying and training a neural network
+from keras.layers import Input, Convolution2D, MaxPooling2D, Dense, Dropout, Activation, Flatten
+from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
+from keras.layers import Activation, Dense
+import matplotlib.pyplot as plt
+from keras.models import Sequential
+import matplotlib.pyplot as plt
+#from Functions import accuracy_by_class , plot_confusion_matrix, PlotLearning, build_classifier_CNN, Flush_results
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.metrics import matthews_corrcoef
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import learning_curve
+from sklearn.metrics import matthews_corrcoef
+from keras.layers import Bidirectional, LSTM
+import scikitplot as skplt
+from Functions import accuracy_by_class , plot_confusion_matrix, PlotLearning, build_classifier_CNN, Flush_results
+
+#importing dataset
+dataset=pd.read_csv("CICIDS2018.csv")
+
+# Shuffling The Final concinated Data
+dataset = dataset.sample(frac=1).reset_index(drop=True)
+
+#X=mydata.iloc[:, 0:78]
+#Y=mydata.iloc[:,78:79]
+
+dataset = pd.DataFrame(dataset)
+x_train = dataset.iloc[: , 0:78].values
+x_train = pd.DataFrame(x_train)
+y_train = dataset.iloc[: , 78:79].values
+y_train = pd.DataFrame(y_train)
+
+
+#Normilization
+#sc=StandardScaler()
+#x_train = sc.fit_transform(x_train)
+min_max_scaler = preprocessing.MinMaxScaler()
+x_train = min_max_scaler.fit_transform(x_train)
+
+
+#x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.30)
+#x_train = np.array(x_train)
+#x_train = np.reshape (x_train,(x_train.shape[0], 1, x_train.shape[1]))
+
+#x_test = np.array(x_test)
+#x_test = np.reshape (x_test,(x_test.shape[0], 1, x_test.shape[1]))
+
+x_train_rnn = x_train_cnn = x_train
+y_train_rnn = y_train_cnn = y_train
+
+x_train_cnn = np.array(x_train_cnn)
+x_train_cnn = np.reshape(x_train_cnn, (x_train_cnn.shape[0], 1, 1, x_train_cnn.shape[1]))
+
+from numpy import argmax
+
+#num_train, height, width, depth = x_train_cnn.shape 
+#num_test = x_test_cnn.shape[0] 
+#num_classes = y_train_cnn.shape[1] 
+
+
+x_train_rnn = np.array(x_train_rnn)
+#x_test_rnn = np.array(x_test_rnn)
+x_train_rnn = np.reshape(x_train_rnn, ( x_train_rnn.shape[0],1, x_train_rnn.shape[1]))
+#x_test_rnn = np.reshape(x_test_rnn, ( x_test_rnn.shape[0],1, x_test_rnn.shape[1]))
+
+#ONE HOT ENCODING
+#Num_classes = len(np.unique(Y))
+#y_train_ohe= to_categorical(y_train,Num_classes)
+#y_train_ohe = pd.DataFrame(y_train_ohe)
+
+Y = y_train_rnn
+X = x_train_rnn
+X = np.array(X)
+Y  =np.array(Y)
+Traning_Time = []
+Acc = []
+Testing_Time = []
+CM = []
+TPR = []
+TNR = []
+NPV = []
+FNR = []
+FPR = []
+FDR = []
+FOR = []
+Recall = []
+Precision = []
+F1 = []
+MCC = []
+n=0
+folds = 10
+kfold = StratifiedKFold(n_splits=folds, shuffle=True, random_state=0)
+for train, test in kfold.split(X, Y):
+    n=n+1
+    print("Fold {} of {}.   **Processing...".format(n,folds))
+    num_classes=6
+    model = Sequential()
+    model.add(Bidirectional(LSTM(200, input_shape= (x_train_rnn.shape[1],x_train_rnn.shape[2]), return_sequences = True)))   
+    #model.add(Dropout(rate= 0.2))
+    model.add(Bidirectional(LSTM(100, return_sequences=False)))
+    model.add(Dense(30, activation='relu'))
+    model.add(Dense(num_classes, activation='softmax'))
+    
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy']) 
+    #t1 = datetime.datetime.now()
+    score = model.fit(X[train], to_categorical(Y[train], num_classes), batch_size = 64, epochs = 10)
+    
+    #model.fit(x_train, y_train_ohe, epochs=5, batch_size=64)
+    #predict_prob=model.predict([x_test])
+    #t2 = datetime.datetime.now()
+    #print('Total time for traning: {}'.format(t2-t1))
+#   print('Total time for traning: {}'.format(t2-t1))
+    #Traning_Time.append(t2-t1)
+    t1 = datetime.datetime.now()
+    t2 = datetime.datetime.now()
+    Testing_Time.append(t2-t1)
+    #Accuracy
+    import time
+    time.clock = time.time
+    start = time.clock()
+    scores = model.predict(X[test])
+    acc =  accuracy_score(Y[test],scores.argmax(1))*100
+    print ("Accuracy:  ", acc)
+    end = time.clock()
+    print ("%.2gs" % (end-start))
+
+##############################################################################
+#   predict_classes=np.argmax(predict_prob,axis=1)
+#   prediction = model.predict(x_test)
+#   prediction =prediction.argmax(1)
+#   plt.rcParams['figure.dpi'] = 300
+#   skplt.metrics.plot_roc(y_test, predict_prob) 
+#   plt.show()    
+    Acc.append(acc)
+    print(classification_report(Y[test],scores.argmax(1)))
+    hold = Y[test]
+    hold = pd.DataFrame(hold)
+    #Confusion Matrix
+    cm_cnn = confusion_matrix(hold, scores)
+#    plot_confusion_matrix(cm_cnn, classes=class_names , normalize=False,
+#                          title='Confusion matrix, without normalization')
+
+    CM.append(cm_cnn)
+    cm_cnn = np.array(cm_cnn)
+    TP = cm_cnn[0][0]
+    #FP = np.int(np.sum(cm_cnn[np.triu_indices(num_classes,1,num_classes)]))
+    FP =  np.triu(cm_cnn).sum()-np.trace(cm_cnn)
+    # cm[row][column]
+    FN = np.tril(cm_cnn).sum()-np.trace(cm_cnn)
+    TN = np.trace(cm_cnn) - TP
+    #   print("Accuracy:" + str(accuracy_score(y_test, prediction)* 100))
+    #   print(f1_score(y_test, prediction, average="macro")) 
+    #   print(precision_score(y_test, prediction, average="macro"))    
+    #   print(recall_score(y_test, prediction, average="macro"))
+    #   print(classification_report(y_test, prediction))
+    #   cm = confusion_matrix(y_test, prediction)
+    #   plt.rcParams['figure.dpi'] = 300
+    #   skplt.metrics.plot_confusion_matrix(y_test, prediction)
+    #   print (cm)
+    
+    #FP = cm.sum(axis=0) - np.diag(cm)  
+    #FN = cm.sum(axis=1) - np.diag(cm)
+    #TP = np.diag(cm)
+    #TN = cm.sum() - (FP + FN + TP)
+    #FP = FP.astype(float)
+    #FN = FN.astype(float)
+    #TP = TP.astype(float)
+    #TN = TN.astype(float)
+    TPR.append(TP/(TP + FN))
+    TNR.append(TN/(TN + FP))
+    NPV.append(FP/(FP + TN))
+    FNR.append(FN/(FN + TP))
+    FPR.append(FP/(FP + TN))
+    FDR.append(FP/(FP + TP))
+    FOR.append(FN/(FN + TN))
+    Recall.append(TP/(TP + FN))
+    Precision.append(TP/(TP + FP))
+    F1.append(TP/(TP + FN))
+    MCC.append(matthews_corrcoef(Y[test]))
+    print(Traning_Time)
+    print(Testing_Time)
+    print(Acc)
+    print(TPR)
+    print(TNR)
+    print(NPV)
+    print(FNR)
+    print(FDR)
+    print(FPR)
+    print(F1)
+    print(MCC)
+    print(FOR)
+    print(Recall)
+    print(Precision)
+#ACC = (TP+TN)/(TP+FP+FN+TN)
+#Precision  = TP / (FP + TP)
+#Recall = TP / (FN + TP)
+#F1 = 2* Precision * Recall/ (Precision + Recall )
